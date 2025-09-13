@@ -38,6 +38,7 @@ class FractionCalculatorLogic {
   double? get firstNumericOperand => _inputHandler.firstNumericOperand;
   double? get secondNumericOperand => _inputHandler.secondNumericOperand;
   bool get shouldShowHistory => _shouldShowHistory;
+
   Fraction? get originalFirstOperand => _inputHandler.originalFirstOperand;
   Fraction? get originalSecondOperand => _inputHandler.originalSecondOperand;
   Fraction? get firstCommonResult => _inputHandler.firstCommonResult;
@@ -82,7 +83,35 @@ class FractionCalculatorLogic {
 
   String getDecimalSymbol(Fraction fraction) {
     if (isPureNumericCalculation) return "=";
+
+    // 检查分数转换为小数是否是精确值
+    if (isExactDecimal(fraction)) {
+      return "=";
+    }
     return "≈";
+  }
+
+  // 添加新的辅助方法来判断分数是否能精确转换为小数
+  bool isExactDecimal(Fraction fraction) {
+    // 获取分数的分母（不包括整数部分）
+    int denominator = fraction.denominator;
+
+    // 检查分母是否只包含因子2和5
+    // 如果分母只能被2和5整除，那么这个分数可以精确表示为十进制小数
+    int temp = denominator;
+
+    // 除以所有的2
+    while (temp % 2 == 0) {
+      temp ~/= 2;
+    }
+
+    // 除以所有的5
+    while (temp % 5 == 0) {
+      temp ~/= 5;
+    }
+
+    // 如果最后剩下1，说明分母只包含2和5的因子，可以精确转换
+    return temp == 1;
   }
 
   // 【简化】所有运算都显示原始算式

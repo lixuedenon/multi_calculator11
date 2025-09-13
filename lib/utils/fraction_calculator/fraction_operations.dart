@@ -740,6 +740,9 @@ class FractionOperations {
 
   // 执行加法运算
   static Fraction performAddition(Fraction first, Fraction second, List<String> stepsList) {
+    print("=== performAddition 调试 ===");
+    print("first: ${first.integerPart} ${first.numerator}/${first.denominator}");
+    print("second: ${second.integerPart} ${second.numerator}/${second.denominator}");
     stepsList.add("fraction_step_addition".tr());
 
     if (first.denominator == second.denominator) {
@@ -752,13 +755,18 @@ class FractionOperations {
       }));
 
       Fraction result = Fraction(
-        integerPart: 0,
-        numerator: first.numerator + second.numerator,
-        denominator: first.denominator,
-      );
+              integerPart: 0,
+              numerator: first.numerator + second.numerator,
+              denominator: first.denominator,
+            );
 
-      addSimplificationSteps(result, stepsList);
-      return result;
+            print("加法计算结果：${result.integerPart} ${result.numerator}/${result.denominator}");
+
+            addSimplificationSteps(result, stepsList);
+
+            print("约分后结果：${result.integerPart} ${result.numerator}/${result.denominator}");
+
+            return result;
     } else {
       // 不同分母需要通分
       stepsList.add("fraction_different_denominators_need_common".tr());

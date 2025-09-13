@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
-import '../utils/right_triangle_calculator.dart';
+import '../../utils/right_triangle_calculator/right_triangle_calculator.dart';
 import 'right_triangle_display.dart';
 import 'right_triangle_input.dart';
 import 'right_triangle_keyboard.dart';

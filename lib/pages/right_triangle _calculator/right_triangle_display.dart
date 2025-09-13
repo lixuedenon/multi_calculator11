@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import '../utils/right_triangle_calculator.dart';
+import '../../utils/right_triangle_calculator/right_triangle_calculator.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class RightTriangleDisplay extends StatefulWidget {

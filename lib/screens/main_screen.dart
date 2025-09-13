@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'dart:ui' as ui;
 
-import '../pages/fraction_calculator_page.dart';
-import '../pages/right_triangle_main.dart';
+import '../pages/fraction_calculator/fraction_calculator_page.dart';
+import '../pages/right_triangle _calculator/right_triangle_main.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
