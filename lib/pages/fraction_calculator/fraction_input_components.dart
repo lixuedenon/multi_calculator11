@@ -1,4 +1,4 @@
-// fraction_input_components.dart - RTL修复完整版
+// fraction_input_components.dart - RTL修复完整版（添加简单负号功能）
 
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -269,10 +269,11 @@ class FractionInputComponents {
             ),
           ),
           const SizedBox(height: 2),
+          // 【修改】恢复+/-按钮，与小数点按钮并排
           Expanded(
             child: Row(
               children: [
-                Expanded(child: buildNumberButton('+/-', const Color(0xFF444444), () => handleIntegerInput('+/-'))),
+                Expanded(child: buildNumberButton('D↔F', const Color(0xFF444444), () => handleIntegerInput('D↔F'))),
                 const SizedBox(width: 2),
                 Expanded(child: buildNumberButton('.', const Color(0xFF444444), () => handleIntegerInput('.'))),
               ],

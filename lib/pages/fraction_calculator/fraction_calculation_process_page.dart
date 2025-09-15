@@ -1,4 +1,4 @@
-// fraction_calculation_process_page.dart - RTL修复完整版
+// fraction_calculation_process_page.dart - RTL修复完整版（删除+/-功能版）
 
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -357,516 +357,477 @@ class CalculationProcessPage extends StatelessWidget {
   }
 
   Widget _buildDetailedProcessSteps(String process) {
-    List<String> steps = process.split('\n');
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: steps.asMap().entries.map((entry) {
-          int index = entry.key;
-          String step = entry.value.trim();
+      List<String> steps = process.split('\n');
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: steps.asMap().entries.map((entry) {
+            int index = entry.key;
+            String step = entry.value.trim();
 
-          if (step.isEmpty) return const SizedBox(height: 4);
+            if (step.isEmpty) return const SizedBox(height: 4);
 
-          // 检查是否是步骤标题
-          bool isStepTitle = step.startsWith('步骤') || step.startsWith('Step');
+            // 检查是否是步骤标题
+            bool isStepTitle = step.startsWith('步骤') || step.startsWith('Step');
 
-          // 检查是否是双结果标记行，如果是则跳过显示（因为会在结果区域显示）
-          bool isDualResultLine = step.contains('【双结果】');
-          if (isDualResultLine) return const SizedBox.shrink();
+            // 检查是否是双结果标记行，如果是则跳过显示（因为会在结果区域显示）
+            bool isDualResultLine = step.contains('【双结果】');
+            if (isDualResultLine) return const SizedBox.shrink();
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 只对非步骤标题行添加缩进
-                if (!isStepTitle) ...[
-                  const SizedBox(width: 16),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 只对非步骤标题行添加缩进
+                  if (!isStepTitle) ...[
+                    const SizedBox(width: 16),
+                  ],
+                  // 步骤内容 - 数学表达式保持LTR，文本使用RTL
+                  Expanded(
+                    child: _buildStepContent(step, isStepTitle),
+                  ),
                 ],
-                // 步骤内容 - 数学表达式保持LTR，文本使用RTL
-                Expanded(
-                  child: _buildStepContent(step, isStepTitle),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    Widget _buildStepContent(String step, bool isStepTitle) {
+      // 如果包含数学符号或分数，保持LTR显示
+      if (_containsMathContent(step)) {
+        return _parseAndDisplayMathExpression(step,
+            style: TextStyle(
+              fontSize: isStepTitle ? 13 : 12,
+              fontWeight: isStepTitle ? FontWeight.w600 : FontWeight.normal,
+              color: isStepTitle ? Colors.blue.shade700 : Colors.black87,
+            ));
+      } else {
+        // 纯文本使用RTL
+        return Directionality(
+          textDirection: ui.TextDirection.rtl,
+          child: Text(
+            step,
+            style: TextStyle(
+              fontSize: isStepTitle ? 13 : 12,
+              fontWeight: isStepTitle ? FontWeight.w600 : FontWeight.normal,
+              color: isStepTitle ? Colors.blue.shade700 : Colors.black87,
+            ),
+          ),
+        );
+      }
+    }
+
+    // 检查文本是否包含数学内容
+    bool _containsMathContent(String text) {
+      return text.contains('/') ||
+          text.contains('×') ||
+          text.contains('÷') ||
+          text.contains('+') ||
+          text.contains('-') ||
+          text.contains('=') ||
+          text.contains('(') ||
+          text.contains(')') ||
+          text.contains('[FRACTION:') ||
+          RegExp(r'\d+').hasMatch(text);
+    }
+
+    // 解析并显示数学表达式 - 数学内容保持LTR
+    Widget _parseAndDisplayMathExpression(String expression, {TextStyle? style}) {
+      List<Widget> widgets = [];
+
+      TextStyle defaultStyle = style ?? const TextStyle(
+        color: Colors.black87,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      );
+
+      // 处理特殊的手写分数标记 [FRACTION:分子表达式:分母表达式]
+      RegExp handwrittenFractionRegex = RegExp(r'\[FRACTION:([^:]+):([^:]+)\]');
+
+      // 【简化】移除负数匹配的正则表达式
+      RegExp fractionRegex = RegExp(r'(\d+)\s*/\s*(\d+)'); // 只匹配正数分数
+      RegExp mixedNumberRegex = RegExp(r'(\d+)\s+(\d+)\s*/\s*(\d+)'); // 只匹配正数带分数
+
+      // 简化复杂表达式匹配，避免与除法冲突
+      RegExp complexExpressionRegex = RegExp(r'(\d+)\s*[×*]\s*(\d+)\s*/\s*(\d+)'); // 匹配 数字×数字/数字
+
+      // 更精确的除法表达式匹配，避免误匹配
+      RegExp divisionWithFractionRegex = RegExp(r'(\d+)\s*[÷]\s*(\d+)\s*/\s*(\d+)'); // 只匹配带÷号的除法
+
+      String processedExpression = expression;
+      List<Map<String, dynamic>> replacements = [];
+
+      // 1. 首先找到所有手写分数标记
+      Iterable<RegExpMatch> handwrittenMatches = handwrittenFractionRegex.allMatches(expression);
+      for (RegExpMatch match in handwrittenMatches) {
+        String numeratorExpr = match.group(1)!.trim();
+        String denominatorExpr = match.group(2)!.trim();
+
+        replacements.add({
+          'start': match.start,
+          'end': match.end,
+          'type': 'handwritten_fraction',
+          'numeratorExpr': numeratorExpr,
+          'denominatorExpr': denominatorExpr,
+          'original': match.group(0)!,
+        });
+      }
+
+      // 2. 找到所有带分数（优先级高）
+      Iterable<RegExpMatch> mixedMatches = mixedNumberRegex.allMatches(expression);
+      for (RegExpMatch match in mixedMatches) {
+        bool isPartOfHandwritten = replacements.any((r) =>
+        match.start >= r['start'] && match.end <= r['end']);
+
+        if (!isPartOfHandwritten) {
+          String integer = match.group(1)!;
+          String numerator = match.group(2)!;
+          String denominator = match.group(3)!;
+
+          replacements.add({
+            'start': match.start,
+            'end': match.end,
+            'type': 'mixed',
+            'integer': integer,
+            'numerator': numerator,
+            'denominator': denominator,
+            'original': match.group(0)!,
+          });
+        }
+      }
+
+      // 3. 更精确地处理除法表达式
+      Iterable<RegExpMatch> divisionMatches = divisionWithFractionRegex.allMatches(expression);
+      for (RegExpMatch match in divisionMatches) {
+        // 检查是否与已有匹配重叠
+        bool isPartOfOther = replacements.any((r) =>
+        (match.start >= r['start'] && match.end <= r['end']) ||
+            (r['start'] >= match.start && r['end'] <= match.end));
+
+        if (!isPartOfOther) {
+          String dividend = match.group(1)!;
+          String fractionNumerator = match.group(2)!;
+          String fractionDenominator = match.group(3)!;
+
+          replacements.add({
+            'start': match.start,
+            'end': match.end,
+            'type': 'division_with_fraction',
+            'dividend': dividend,
+            'fractionNumerator': fractionNumerator,
+            'fractionDenominator': fractionDenominator,
+            'original': match.group(0)!,
+          });
+        }
+      }
+
+      // 4. 找到复杂表达式 (如 36*5/6)
+      Iterable<RegExpMatch> complexMatches = complexExpressionRegex.allMatches(expression);
+      for (RegExpMatch match in complexMatches) {
+        // 检查是否与其他表达式重叠
+        bool isPartOfOther = replacements.any((r) =>
+        (match.start >= r['start'] && match.end <= r['end']) ||
+            (r['start'] >= match.start && r['end'] <= match.end));
+
+        if (!isPartOfOther) {
+          String multiplier = match.group(1)!;
+          String numerator = match.group(2)!;
+          String denominator = match.group(3)!;
+
+          replacements.add({
+            'start': match.start,
+            'end': match.end,
+            'type': 'complex_fraction',
+            'multiplier': multiplier,
+            'numerator': numerator,
+            'denominator': denominator,
+            'original': match.group(0)!,
+          });
+        }
+      }
+
+      // 5. 最后找普通分数
+          Iterable<RegExpMatch> fractionMatches = fractionRegex.allMatches(expression);
+          for (RegExpMatch match in fractionMatches) {
+            bool isPartOfOther = replacements.any((r) =>
+            (match.start >= r['start'] && match.end <= r['end']) ||
+                (r['start'] >= match.start && r['end'] <= match.end));
+
+            if (!isPartOfOther) {
+              replacements.add({
+                'start': match.start,
+                'end': match.end,
+                'type': 'fraction',
+                'numerator': match.group(1)!,
+                'denominator': match.group(2)!,
+                'original': match.group(0)!,
+              });
+            }
+          }
+
+          // 按位置排序，并移除重叠项
+          replacements.sort((a, b) => a['start'].compareTo(b['start']));
+
+          // 移除重叠的替换项
+          List<Map<String, dynamic>> cleanReplacements = [];
+          for (int i = 0; i < replacements.length; i++) {
+            bool isOverlapping = false;
+            for (int j = 0; j < cleanReplacements.length; j++) {
+              if (replacements[i]['start'] < cleanReplacements[j]['end'] &&
+                  replacements[i]['end'] > cleanReplacements[j]['start']) {
+                isOverlapping = true;
+                break;
+              }
+            }
+            if (!isOverlapping) {
+              cleanReplacements.add(replacements[i]);
+            }
+          }
+
+          // 构建widgets
+          int lastEnd = 0;
+          for (Map<String, dynamic> replacement in cleanReplacements) {
+            // 添加前面的普通文本
+            if (replacement['start'] > lastEnd) {
+              String beforeText = expression.substring(lastEnd, replacement['start']);
+              if (beforeText.isNotEmpty) {
+                widgets.addAll(_parseSimpleText(beforeText, defaultStyle));
+              }
+            }
+
+            // 添加对应的widget
+            switch (replacement['type']) {
+              case 'handwritten_fraction':
+              // 渲染手写分数格式
+                widgets.add(_buildHandwrittenExpressionFraction(
+                    replacement['numeratorExpr'], replacement['denominatorExpr']));
+                break;
+              case 'division_with_fraction':
+                widgets.add(Text(replacement['dividend'], style: defaultStyle));
+                widgets.add(const SizedBox(width: 4));
+                widgets.add(Text('÷', style: defaultStyle));
+                widgets.add(const SizedBox(width: 4));
+                widgets.add(_buildHandwrittenFraction(
+                    '${replacement['fractionNumerator']}/${replacement['fractionDenominator']}'));
+                break;
+              case 'complex_fraction':
+                widgets.add(Text(replacement['multiplier'], style: defaultStyle));
+                widgets.add(const SizedBox(width: 2));
+                widgets.add(Text('×', style: defaultStyle));
+                widgets.add(const SizedBox(width: 2));
+                widgets.add(_buildHandwrittenFraction(
+                    '${replacement['numerator']}/${replacement['denominator']}'));
+                break;
+              case 'mixed':
+                widgets.add(_buildMixedNumber(replacement['integer'],
+                    '${replacement['numerator']}/${replacement['denominator']}'));
+                break;
+              case 'fraction':
+                widgets.add(_buildHandwrittenFraction(
+                    '${replacement['numerator']}/${replacement['denominator']}'));
+                break;
+            }
+
+            lastEnd = replacement['end'];
+          }
+
+          // 添加剩余的文本
+          if (lastEnd < expression.length) {
+            String remainingText = expression.substring(lastEnd);
+            if (remainingText.isNotEmpty) {
+              widgets.addAll(_parseSimpleText(remainingText, defaultStyle));
+            }
+          }
+
+          return Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 2,
+            children: widgets,
+          );
+        }
+
+        // 构建手写表达式分数格式 - 用于通分中间步骤
+        Widget _buildHandwrittenExpressionFraction(String numeratorExpr, String denominatorExpr) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 分子表达式
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Text(
+                    numeratorExpr,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                // 分数线
+                Container(
+                  width: math.max(
+                    numeratorExpr.length * 7.0,
+                    denominatorExpr.length * 7.0,
+                  ) + 8,
+                  height: 1.5,
+                  color: Colors.black87,
+                ),
+                // 分母表达式
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Text(
+                    denominatorExpr,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ],
             ),
           );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildStepContent(String step, bool isStepTitle) {
-    // 如果包含数学符号或分数，保持LTR显示
-    if (_containsMathContent(step)) {
-      return _parseAndDisplayMathExpression(step,
-          style: TextStyle(
-            fontSize: isStepTitle ? 13 : 12,
-            fontWeight: isStepTitle ? FontWeight.w600 : FontWeight.normal,
-            color: isStepTitle ? Colors.blue.shade700 : Colors.black87,
-          ));
-    } else {
-      // 纯文本使用RTL
-      return Directionality(
-        textDirection: ui.TextDirection.rtl,
-        child: Text(
-          step,
-          style: TextStyle(
-            fontSize: isStepTitle ? 13 : 12,
-            fontWeight: isStepTitle ? FontWeight.w600 : FontWeight.normal,
-            color: isStepTitle ? Colors.blue.shade700 : Colors.black87,
-          ),
-        ),
-      );
-    }
-  }
-
-  // 检查文本是否包含数学内容
-  bool _containsMathContent(String text) {
-    return text.contains('/') ||
-        text.contains('×') ||
-        text.contains('÷') ||
-        text.contains('+') ||
-        text.contains('-') ||
-        text.contains('=') ||
-        text.contains('(') ||
-        text.contains(')') ||
-        text.contains('[FRACTION:') ||
-        RegExp(r'\d+').hasMatch(text);
-  }
-
-  // 解析并显示数学表达式 - 数学内容保持LTR
-  Widget _parseAndDisplayMathExpression(String expression, {TextStyle? style}) {
-    List<Widget> widgets = [];
-
-    TextStyle defaultStyle = style ?? const TextStyle(
-      color: Colors.black87,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-
-    // 处理特殊的手写分数标记 [FRACTION:分子表达式:分母表达式]
-    RegExp handwrittenFractionRegex = RegExp(r'\[FRACTION:([^:]+):([^:]+)\]');
-
-    // 原有的正则表达式
-    RegExp fractionRegex = RegExp(r'(-?\d+)\s*/\s*(\d+)'); // 匹配 ±数字/数字
-    RegExp mixedNumberRegex = RegExp(r'(-?\d+)\s+(\d+)\s*/\s*(\d+)'); // 匹配 ±整数 分子/分母
-
-    // 简化复杂表达式匹配，避免与除法冲突
-    RegExp complexExpressionRegex = RegExp(r'(\d+)\s*[×*]\s*(\d+)\s*/\s*(\d+)'); // 匹配 数字×数字/数字
-
-    // 更精确的除法表达式匹配，避免误匹配
-    RegExp divisionWithFractionRegex = RegExp(r'(\d+)\s*[÷]\s*(\d+)\s*/\s*(\d+)'); // 只匹配带÷号的除法
-
-    String processedExpression = expression;
-    List<Map<String, dynamic>> replacements = [];
-
-    // 1. 首先找到所有手写分数标记
-    Iterable<RegExpMatch> handwrittenMatches = handwrittenFractionRegex.allMatches(expression);
-    for (RegExpMatch match in handwrittenMatches) {
-      String numeratorExpr = match.group(1)!.trim();
-      String denominatorExpr = match.group(2)!.trim();
-
-      replacements.add({
-        'start': match.start,
-        'end': match.end,
-        'type': 'handwritten_fraction',
-        'numeratorExpr': numeratorExpr,
-        'denominatorExpr': denominatorExpr,
-        'original': match.group(0)!,
-      });
-    }
-
-    // 2. 找到所有带分数（优先级高）
-    Iterable<RegExpMatch> mixedMatches = mixedNumberRegex.allMatches(expression);
-    for (RegExpMatch match in mixedMatches) {
-      bool isPartOfHandwritten = replacements.any((r) =>
-      match.start >= r['start'] && match.end <= r['end']);
-
-      if (!isPartOfHandwritten) {
-        String integer = match.group(1)!;
-        String numerator = match.group(2)!;
-        String denominator = match.group(3)!;
-
-        replacements.add({
-          'start': match.start,
-          'end': match.end,
-          'type': 'mixed',
-          'integer': integer,
-          'numerator': numerator,
-          'denominator': denominator,
-          'original': match.group(0)!,
-        });
-      }
-    }
-
-    // 3. 更精确地处理除法表达式
-    Iterable<RegExpMatch> divisionMatches = divisionWithFractionRegex.allMatches(expression);
-    for (RegExpMatch match in divisionMatches) {
-      // 检查是否与已有匹配重叠
-      bool isPartOfOther = replacements.any((r) =>
-      (match.start >= r['start'] && match.end <= r['end']) ||
-          (r['start'] >= match.start && r['end'] <= match.end));
-
-      if (!isPartOfOther) {
-        String dividend = match.group(1)!;
-        String fractionNumerator = match.group(2)!;
-        String fractionDenominator = match.group(3)!;
-
-        replacements.add({
-          'start': match.start,
-          'end': match.end,
-          'type': 'division_with_fraction',
-          'dividend': dividend,
-          'fractionNumerator': fractionNumerator,
-          'fractionDenominator': fractionDenominator,
-          'original': match.group(0)!,
-        });
-      }
-    }
-
-    // 4. 找到复杂表达式 (如 36*5/6)
-    Iterable<RegExpMatch> complexMatches = complexExpressionRegex.allMatches(expression);
-    for (RegExpMatch match in complexMatches) {
-      // 检查是否与其他表达式重叠
-      bool isPartOfOther = replacements.any((r) =>
-      (match.start >= r['start'] && match.end <= r['end']) ||
-          (r['start'] >= match.start && r['end'] <= match.end));
-
-      if (!isPartOfOther) {
-        String multiplier = match.group(1)!;
-        String numerator = match.group(2)!;
-        String denominator = match.group(3)!;
-
-        replacements.add({
-          'start': match.start,
-          'end': match.end,
-          'type': 'complex_fraction',
-          'multiplier': multiplier,
-          'numerator': numerator,
-          'denominator': denominator,
-          'original': match.group(0)!,
-        });
-      }
-    }
-
-    // 5. 最后找普通分数
-    Iterable<RegExpMatch> fractionMatches = fractionRegex.allMatches(expression);
-    for (RegExpMatch match in fractionMatches) {
-      bool isPartOfOther = replacements.any((r) =>
-      (match.start >= r['start'] && match.end <= r['end']) ||
-          (r['start'] >= match.start && r['end'] <= match.end));
-
-      if (!isPartOfOther) {
-        replacements.add({
-          'start': match.start,
-          'end': match.end,
-          'type': 'fraction',
-          'numerator': match.group(1)!,
-          'denominator': match.group(2)!,
-          'original': match.group(0)!,
-        });
-      }
-    }
-
-    // 按位置排序，并移除重叠项
-    replacements.sort((a, b) => a['start'].compareTo(b['start']));
-
-    // 移除重叠的替换项
-    List<Map<String, dynamic>> cleanReplacements = [];
-    for (int i = 0; i < replacements.length; i++) {
-      bool isOverlapping = false;
-      for (int j = 0; j < cleanReplacements.length; j++) {
-        if (replacements[i]['start'] < cleanReplacements[j]['end'] &&
-            replacements[i]['end'] > cleanReplacements[j]['start']) {
-          isOverlapping = true;
-          break;
         }
-      }
-      if (!isOverlapping) {
-        cleanReplacements.add(replacements[i]);
-      }
-    }
 
-    // 构建widgets
-    int lastEnd = 0;
-    for (Map<String, dynamic> replacement in cleanReplacements) {
-      // 添加前面的普通文本
-      if (replacement['start'] > lastEnd) {
-        String beforeText = expression.substring(lastEnd, replacement['start']);
-        if (beforeText.isNotEmpty) {
-          widgets.addAll(_parseSimpleText(beforeText, defaultStyle));
+        // 解析简单文本（非分数部分）
+        List<Widget> _parseSimpleText(String text, TextStyle style) {
+          List<Widget> widgets = [];
+          List<String> parts = text.split(' ');
+
+          for (int i = 0; i < parts.length; i++) {
+            if (parts[i].isNotEmpty) {
+              widgets.add(Text(parts[i], style: style));
+              if (i < parts.length - 1) {
+                widgets.add(const SizedBox(width: 6));
+              }
+            }
+          }
+
+          return widgets;
         }
-      }
 
-      // 添加对应的widget
-      switch (replacement['type']) {
-        case 'handwritten_fraction':
-        // 渲染手写分数格式
-          widgets.add(_buildHandwrittenExpressionFraction(
-              replacement['numeratorExpr'], replacement['denominatorExpr']));
-          break;
-        case 'division_with_fraction':
-          widgets.add(Text(replacement['dividend'], style: defaultStyle));
-          widgets.add(const SizedBox(width: 4));
-          widgets.add(Text('÷', style: defaultStyle));
-          widgets.add(const SizedBox(width: 4));
-          widgets.add(_buildHandwrittenFraction(
-              '${replacement['fractionNumerator']}/${replacement['fractionDenominator']}'));
-          break;
-        case 'complex_fraction':
-          widgets.add(Text(replacement['multiplier'], style: defaultStyle));
-          widgets.add(const SizedBox(width: 2));
-          widgets.add(Text('×', style: defaultStyle));
-          widgets.add(const SizedBox(width: 2));
-          widgets.add(_buildHandwrittenFraction(
-              '${replacement['numerator']}/${replacement['denominator']}'));
-          break;
-        case 'mixed':
-          widgets.add(_buildMixedNumber(replacement['integer'],
-              '${replacement['numerator']}/${replacement['denominator']}'));
-          break;
-        case 'fraction':
-          widgets.add(_buildHandwrittenFraction(
-              '${replacement['numerator']}/${replacement['denominator']}'));
-          break;
-      }
-
-      lastEnd = replacement['end'];
-    }
-
-    // 添加剩余的文本
-    if (lastEnd < expression.length) {
-      String remainingText = expression.substring(lastEnd);
-      if (remainingText.isNotEmpty) {
-        widgets.addAll(_parseSimpleText(remainingText, defaultStyle));
-      }
-    }
-
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 2,
-      children: widgets,
-    );
-  }
-
-  // 构建手写表达式分数格式 - 用于通分中间步骤
-  Widget _buildHandwrittenExpressionFraction(String numeratorExpr, String denominatorExpr) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 分子表达式
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Text(
-              numeratorExpr,
+        // 【简化】构建手写格式的分数 - 移除负数支持
+        Widget _buildHandwrittenFraction(String fraction) {
+          if (!fraction.contains('/')) {
+            return Text(
+              fraction,
               style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          // 分数线
-          Container(
-            width: math.max(
-              numeratorExpr.length * 7.0,
-              denominatorExpr.length * 7.0,
-            ) + 8,
-            height: 1.5,
-            color: Colors.black87,
-          ),
-          // 分母表达式
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Text(
-              denominatorExpr,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 解析简单文本（非分数部分）
-  List<Widget> _parseSimpleText(String text, TextStyle style) {
-    List<Widget> widgets = [];
-    List<String> parts = text.split(' ');
-
-    for (int i = 0; i < parts.length; i++) {
-      if (parts[i].isNotEmpty) {
-        widgets.add(Text(parts[i], style: style));
-        if (i < parts.length - 1) {
-          widgets.add(const SizedBox(width: 6));
-        }
-      }
-    }
-
-    return widgets;
-  }
-
-  // 构建手写格式的分数 - 支持负数
-  Widget _buildHandwrittenFraction(String fraction) {
-    if (!fraction.contains('/')) {
-      return Text(
-        fraction,
-        style: const TextStyle(
-          color: Colors.black87,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-      );
-    }
-
-    List<String> parts = fraction.split('/');
-    if (parts.length != 2) return Text(fraction);
-
-    String numerator = parts[0].trim();
-    String denominator = parts[1].trim();
-
-    // 处理负数显示
-    bool isNegative = numerator.startsWith('-');
-    if (isNegative) {
-      numerator = numerator.substring(1);
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 负号单独显示
-          if (isNegative) ...[
-            const Text(
-              '-',
-              style: TextStyle(
                 color: Colors.black87,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
-            ),
-            const SizedBox(width: 1),
-          ],
-          // 分数部分
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                numerator,
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+            );
+          }
+
+          List<String> parts = fraction.split('/');
+          if (parts.length != 2) return Text(fraction);
+
+          String numerator = parts[0].trim();
+          String denominator = parts[1].trim();
+
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  numerator,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              Container(
-                width: math.max(
-                  numerator.length * 8.0,
-                  denominator.length * 8.0,
-                ) + 4,
-                height: 1.5,
-                color: Colors.black87,
-              ),
-              Text(
-                denominator,
-                style: const TextStyle(
+                Container(
+                  width: math.max(
+                    numerator.length * 8.0,
+                    denominator.length * 8.0,
+                  ) + 4,
+                  height: 1.5,
                   color: Colors.black87,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 构建带分数格式 - 支持负数
-  Widget _buildMixedNumber(String integer, String fraction) {
-    bool isNegative = integer.startsWith('-');
-    String displayInteger = isNegative ? integer.substring(1) : integer;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // 负号单独显示
-          if (isNegative) ...[
-            const Text(
-              '-',
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+                Text(
+                  denominator,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 1),
-          ],
-          // 整数部分
-          Text(
-            displayInteger,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 4),
-          // 分数部分
-          _buildHandwrittenFraction(fraction),
-        ],
-      ),
-    );
-  }
+          );
+        }
 
-  // 翻译运算名称
-  String _translateOperation(String operation) {
-    try {
-      switch (operation) {
-        case '加法': return 'fraction_add'.tr();
-        case '减法': return 'fraction_subtract'.tr();
-        case '乘法': return 'fraction_multiply'.tr();
-        case '除法': return 'fraction_divide'.tr();
-        case '约分': return 'fraction_simplify'.tr();
-        case '通分': return 'fraction_common'.tr();
-        case '转换': return 'fraction_convert'.tr();
-        case '倒数': return 'fraction_reciprocal'.tr();
-        case '平方': return 'fraction_square'.tr();
-        case '立方': return 'fraction_cube'.tr();
-        case '平方根': return 'fraction_sqrt'.tr();
-        case '立方根': return 'fraction_cbrt'.tr();
-        case 'n次方': return 'fraction_power'.tr();
-        case 'n次根': return 'fraction_root'.tr();
-        case '对数': return 'fraction_log'.tr();
-        case '自然对数': return 'fraction_ln'.tr();
-        case '幂运算': return 'exponentiation'.tr();
-        case '根运算': return 'root_operation'.tr();
-        default: return operation;
+        // 【简化】构建带分数格式 - 移除负数支持
+        Widget _buildMixedNumber(String integer, String fraction) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 整数部分
+                Text(
+                  integer,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // 分数部分
+                _buildHandwrittenFraction(fraction),
+              ],
+            ),
+          );
+        }
+
+        // 翻译运算名称
+        String _translateOperation(String operation) {
+          try {
+            switch (operation) {
+              case '加法': return 'fraction_add'.tr();
+              case '减法': return 'fraction_subtract'.tr();
+              case '乘法': return 'fraction_multiply'.tr();
+              case '除法': return 'fraction_divide'.tr();
+              case '约分': return 'fraction_simplify'.tr();
+              case '通分': return 'fraction_common'.tr();
+              case '转换': return 'fraction_convert'.tr();
+              case '倒数': return 'fraction_reciprocal'.tr();
+              case '平方': return 'fraction_square'.tr();
+              case '立方': return 'fraction_cube'.tr();
+              case '平方根': return 'fraction_sqrt'.tr();
+              case '立方根': return 'fraction_cbrt'.tr();
+              case 'n次方': return 'fraction_power'.tr();
+              case 'n次根': return 'fraction_root'.tr();
+              case '对数': return 'fraction_log'.tr();
+              case '自然对数': return 'fraction_ln'.tr();
+              case '幂运算': return 'exponentiation'.tr();
+              case '根运算': return 'root_operation'.tr();
+              default: return operation;
+            }
+          } catch (e) {
+            return operation;
+          }
+        }
+
+        String _formatTimestamp(DateTime timestamp) {
+          return '${timestamp.hour.toString().padLeft(2, '0')}:'
+              '${timestamp.minute.toString().padLeft(2, '0')}:'
+              '${timestamp.second.toString().padLeft(2, '0')}';
+        }
       }
-    } catch (e) {
-      return operation;
-    }
-  }
-
-  String _formatTimestamp(DateTime timestamp) {
-    return '${timestamp.hour.toString().padLeft(2, '0')}:'
-        '${timestamp.minute.toString().padLeft(2, '0')}:'
-        '${timestamp.second.toString().padLeft(2, '0')}';
-  }
-}

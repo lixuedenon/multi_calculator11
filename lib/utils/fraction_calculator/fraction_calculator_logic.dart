@@ -38,6 +38,8 @@ class FractionCalculatorLogic {
   double? get firstNumericOperand => _inputHandler.firstNumericOperand;
   double? get secondNumericOperand => _inputHandler.secondNumericOperand;
   bool get shouldShowHistory => _shouldShowHistory;
+  // 在FractionCalculatorLogic类中添加：
+  bool get waitingForSecondOperand => _inputHandler.waitingForSecondOperand;
 
   Fraction? get originalFirstOperand => _inputHandler.originalFirstOperand;
   Fraction? get originalSecondOperand => _inputHandler.originalSecondOperand;
