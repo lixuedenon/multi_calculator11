@@ -44,6 +44,13 @@ class FractionInputHandler {
 
   // 双转换结果
   bool dualConversionResult = false;
+  // D↔F转换专用状态
+  bool isDecimalConversionResult = false;
+  double? decimalConversionValue = null;
+  bool isApproximateDecimal = false;
+  Fraction? originalDecimalConversionInput = null;
+  bool isFractionConversionResult = false;
+  String? originalDecimalInput = null;
   Fraction? firstConversionResult;
   Fraction? secondConversionResult;
 
@@ -531,17 +538,27 @@ class FractionInputHandler {
           case '自然对数':
             currentFraction = FractionOperations.naturalLogarithm(originalValue!);
             break;
+
           case '分数小数转换':
-            // 智能转换：分数→小数 或 小数→分数
             if (isCurrentInputDecimal) {
-              // 小数转分数
+              originalDecimalInput = integerInput;
               double decimalValue = originalValue!.toDecimal();
               currentFraction = FractionOperations.doubleToFraction(decimalValue);
+              isFractionConversionResult = true;
+              isDecimalConversionResult = false;
+              calculationResult = Fraction.copy(currentFraction);
             } else {
-              // 分数转小数（显示为特殊标记，在显示层处理）
-              double decimalValue = originalValue!.toDecimal();
-              currentFraction = FractionOperations.doubleToFraction(decimalValue);
-              // 设置特殊标记表示这是分数转小数的结果
+              originalDecimalConversionInput = Fraction.copy(originalValue!);
+              double exactValue = originalValue!.toDecimal();
+              String decimalStr = exactValue.toString();
+              bool needsApproximation = decimalStr.contains('E') || decimalStr.length > 10;
+
+              isDecimalConversionResult = true;
+              isFractionConversionResult = false;
+              decimalConversionValue = exactValue;
+              isApproximateDecimal = needsApproximation;
+              calculationResult = FractionOperations.doubleToFraction(exactValue);
+              currentFraction = calculationResult!;
             }
             break;
           default:
@@ -904,6 +921,12 @@ class FractionInputHandler {
       dualConversionResult = false;
       firstConversionResult = null;
       secondConversionResult = null;
+      isDecimalConversionResult = false;
+      decimalConversionValue = null;
+      isApproximateDecimal = false;
+      originalDecimalConversionInput = null;
+      isFractionConversionResult = false;
+      originalDecimalInput = null;
 
       return CalculatorResult.success();
     }

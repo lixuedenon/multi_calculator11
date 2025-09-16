@@ -167,7 +167,7 @@ class _FractionCalculatorPageState extends State<FractionCalculatorPage>
         decimalPlaces = 5;
       }
 
-      result = value.toStringAsFixed(decimalPlaces);
+      result = value.toStringAsFixed(7);
       result = result.replaceAll(RegExp(r'0+$'), '');
       result = result.replaceAll(RegExp(r'\.$'), '');
     }
@@ -198,6 +198,45 @@ class _FractionCalculatorPageState extends State<FractionCalculatorPage>
   }
 
   Widget buildCalculationResultDisplay() {
+    if (calculator.isFractionConversionResult && calculator.originalDecimalInput != null) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            calculator.originalDecimalInput!,
+            style: const TextStyle(fontSize: 47, color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            "=",
+            style: const TextStyle(fontSize: 47, color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 8),
+          buildFractionDisplay(calculator.calculationResult!),
+        ],
+      );
+    }
+
+    if (calculator.isDecimalConversionResult && calculator.decimalConversionValue != null) {
+      String symbol = calculator.isApproximateDecimal ? "≈" : "=";
+      String decimalText = formatNumericResult(calculator.decimalConversionValue!);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          buildFractionDisplay(calculator.originalDecimalConversionInput!),
+          const SizedBox(width: 8),
+          Text(
+            symbol,
+            style: const TextStyle(fontSize: 47, color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            decimalText,
+            style: const TextStyle(fontSize: 47, color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ],
+      );
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,

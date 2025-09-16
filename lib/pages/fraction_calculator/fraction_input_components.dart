@@ -273,7 +273,21 @@ class FractionInputComponents {
           Expanded(
             child: Row(
               children: [
-                Expanded(child: buildNumberButton('D↔F', const Color(0xFF444444), () => handleIntegerInput('D↔F'))),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      double buttonHeight = constraints.maxHeight;
+                      return AnimatedPressButton(
+                        text: 'D↔F',
+                        width: null,
+                        height: buttonHeight,
+                        color: const Color(0xFF444444),
+                        onPressed: () => handleIntegerInput('D↔F'),
+                        fontSize: buttonHeight * 0.32,  // 缩小字体
+                      );
+                    },
+                  ),
+                ),
                 const SizedBox(width: 2),
                 Expanded(child: buildNumberButton('.', const Color(0xFF444444), () => handleIntegerInput('.'))),
               ],

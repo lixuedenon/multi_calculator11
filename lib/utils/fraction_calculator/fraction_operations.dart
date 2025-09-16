@@ -399,20 +399,16 @@ class FractionOperations {
   static LogarithmResult performLogarithm(Fraction baseNumber, Fraction? currentFraction, bool isCurrentInputDecimal, double currentDecimalValue) {
     LogarithmResult result = LogarithmResult();
 
-    bool hasValidInput = false;
     Fraction base;
     double baseValue;
 
     if (isCurrentInputDecimal) {
-      hasValidInput = true;
       baseValue = currentDecimalValue;
       base = doubleToFraction(currentDecimalValue);
     } else if (currentFraction != null && (currentFraction.integerPart != 0 || currentFraction.numerator != 0)) {
-      hasValidInput = true;
       base = Fraction.copy(currentFraction);
       baseValue = base.toDecimal();
     } else {
-      hasValidInput = false;
       base = Fraction(integerPart: 10, numerator: 0, denominator: 1);
       baseValue = 10.0;
     }
@@ -447,20 +443,16 @@ class FractionOperations {
   static PowerResult performPower(Fraction baseNumber, Fraction? currentFraction, bool isCurrentInputDecimal, double currentDecimalValue) {
     PowerResult result = PowerResult();
 
-    bool hasValidInput = false;
     Fraction exponent;
     double exponentValue;
 
     if (isCurrentInputDecimal) {
-      hasValidInput = true;
       exponentValue = currentDecimalValue;
       exponent = doubleToFraction(currentDecimalValue);
     } else if (currentFraction != null && (currentFraction.integerPart != 0 || currentFraction.numerator != 0)) {
-      hasValidInput = true;
       exponent = Fraction.copy(currentFraction);
       exponentValue = exponent.toDecimal();
     } else {
-      hasValidInput = false;
       exponent = Fraction(integerPart: 4, numerator: 0, denominator: 1);
       exponentValue = 4.0;
     }
@@ -484,20 +476,16 @@ class FractionOperations {
   static RootResult performRoot(Fraction baseNumber, Fraction? currentFraction, bool isCurrentInputDecimal, double currentDecimalValue) {
     RootResult result = RootResult();
 
-    bool hasValidInput = false;
     Fraction rootIndex;
     double rootValue;
 
     if (isCurrentInputDecimal) {
-      hasValidInput = true;
       rootValue = currentDecimalValue;
       rootIndex = doubleToFraction(currentDecimalValue);
     } else if (currentFraction != null && (currentFraction.integerPart != 0 || currentFraction.numerator != 0)) {
-      hasValidInput = true;
       rootIndex = Fraction.copy(currentFraction);
       rootValue = rootIndex.toDecimal();
     } else {
-      hasValidInput = false;
       rootIndex = Fraction(integerPart: 4, numerator: 0, denominator: 1);
       rootValue = 4.0;
     }

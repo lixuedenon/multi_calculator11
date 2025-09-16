@@ -40,7 +40,12 @@ class FractionCalculatorLogic {
   bool get shouldShowHistory => _shouldShowHistory;
   // 在FractionCalculatorLogic类中添加：
   bool get waitingForSecondOperand => _inputHandler.waitingForSecondOperand;
-
+  bool get isDecimalConversionResult => _inputHandler.isDecimalConversionResult;
+  double? get decimalConversionValue => _inputHandler.decimalConversionValue;
+  bool get isApproximateDecimal => _inputHandler.isApproximateDecimal;
+  Fraction? get originalDecimalConversionInput => _inputHandler.originalDecimalConversionInput;
+  bool get isFractionConversionResult => _inputHandler.isFractionConversionResult;
+  String? get originalDecimalInput => _inputHandler.originalDecimalInput;
   Fraction? get originalFirstOperand => _inputHandler.originalFirstOperand;
   Fraction? get originalSecondOperand => _inputHandler.originalSecondOperand;
   Fraction? get firstCommonResult => _inputHandler.firstCommonResult;
